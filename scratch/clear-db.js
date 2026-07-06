@@ -32,6 +32,7 @@ async function main() {
     "replies",
     "email_events",
     "sequences",
+    "campaign_leads",
     "campaigns",
     "leads",
     "dnc_list",

@@ -12,28 +12,30 @@
   --color-indigo-custom: #4f46e5;
 }
 
-@layer base {
-  body {
-    background-color: #09090b;
-    color: #f4f4f5;
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
+body {
+  background-color: #09090b !important;
+  color: #f4f4f5 !important;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
 
-  /* Exquisite Bento Grid styling */
-  .premium-card {
-    background: #121214; /* Deep modern charcoal matches Design HTML bg-zinc-900 */
-    border: 1px solid #1f1f23; /* zinc-800 border */
-    border-radius: 24px; /* rounded-3xl equivalent specified in Design HTML (24px) */
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  }
+h1, h2, h3, h4, h5, h6, p, span, div, td, th, input, select, textarea, button {
+  color: inherit;
+}
 
-  .premium-card:hover {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
-    border-color: #2e2e35;
-    transform: translateY(-2px);
-  }
+/* Exquisite Bento Grid styling */
+.premium-card {
+  background: #121214; /* Deep modern charcoal matches Design HTML bg-zinc-900 */
+  border: 1px solid #1f1f23; /* zinc-800 border */
+  border-radius: 24px; /* rounded-3xl equivalent specified in Design HTML (24px) */
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  border-color: #2e2e35;
+  transform: translateY(-2px);
 }
 
 /* Custom scrollbars for details drawer */
