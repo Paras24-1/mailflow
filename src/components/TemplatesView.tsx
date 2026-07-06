@@ -59,11 +59,15 @@ export default function TemplatesView({
   const [aiTemplateName, setAiTemplateName] = useState("");
   const [aiSaveSuccess, setAiSaveSuccess] = useState(false);
 
+  const [editTab, setEditTab] = useState<"write" | "preview">("write");
+  const [createTab, setCreateTab] = useState<"write" | "preview">("write");
+
   // Group templates by step
   const sortedTemplates = [...templates].sort((a,b) => a.sequenceStep - b.sequenceStep);
 
   const startEdit = (temp: EmailTemplate) => {
     setEditingTemplate(temp);
+    setEditTab("write");
     setEditorForm({
       name: temp.name,
       subject: temp.subject,
@@ -228,6 +232,52 @@ export default function TemplatesView({
     }
   };
 
+  const compilePreviewHtml = (bodyText: string, subjectText: string) => {
+    const vars: Record<string, string> = {
+      first_name: "John",
+      company: "Acme Corp",
+    };
+    let compiledBody = bodyText || "";
+    let compiledSubject = subjectText || "";
+    for (const [key, val] of Object.entries(vars)) {
+      const regex = new RegExp(`{{\\\\s*${key}\\\\s*}}`, "g");
+      compiledBody = compiledBody.replace(regex, val);
+      compiledSubject = compiledSubject.replace(regex, val);
+    }
+    const isHtml = /<[a-z][\\s\\S]*>/i.test(compiledBody);
+    if (!isHtml) {
+      compiledBody = compiledBody.replace(/\\n/g, "<br />");
+    }
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              font-size: 14px;
+              line-height: 1.6;
+              color: #333333;
+              background-color: #ffffff;
+              margin: 0;
+              padding: 16px;
+            }
+            p { margin: 0 0 16px 0; }
+          </style>
+        </head>
+        <body>
+          <div style="font-size: 11px; color: #666; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee;">
+            <strong>Subject:</strong> ${compiledSubject}
+          </div>
+          <div>
+            ${compiledBody}
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
   return (
     <div id="templates-view-container" className="space-y-6 font-sans">
       {/* View Header */}
@@ -358,7 +408,7 @@ export default function TemplatesView({
       {/* DIALOG A: EDIT TEMPLATE DETAIL MODAL */}
       {showEditModal && editingTemplate && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 animate-fade-in animate-duration-150">
-          <div className="bg-[#121214] rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative border border-[#1f1f23] flex flex-col justify-between">
+          <div className="bg-[#121214] rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl relative border border-[#1f1f23] flex flex-col justify-between">
             <button
               onClick={() => {
                 setShowEditModal(false);
@@ -383,59 +433,107 @@ export default function TemplatesView({
               </div>
             </div>
 
+            {/* Tab selector */}
+            <div className="flex border-b border-[#1f1f23] mb-2">
+              <button
+                type="button"
+                onClick={() => setEditTab("write")}
+                className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+                  editTab === "write"
+                    ? "border-indigo-600 text-white"
+                    : "border-transparent text-zinc-400 hover:text-white"
+                }`}
+              >
+                Template Editor
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTab("preview")}
+                className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+                  editTab === "preview"
+                    ? "border-indigo-600 text-white"
+                    : "border-transparent text-zinc-400 hover:text-white"
+                }`}
+              >
+                HTML / Output Preview
+              </button>
+            </div>
+
             <form onSubmit={handleEditorSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Template Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editorForm.name}
-                  onChange={(e) => setEditorForm({ ...editorForm, name: e.target.value })}
-                  placeholder="Introductory Subject Outreach"
-                  className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
-                />
-              </div>
+              {editTab === "write" ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Template Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editorForm.name}
+                      onChange={(e) => setEditorForm({ ...editorForm, name: e.target.value })}
+                      placeholder="Introductory Subject Outreach"
+                      className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Subject Title</label>
-                <input
-                  type="text"
-                  required
-                  value={editorForm.subject}
-                  onChange={(e) => setEditorForm({ ...editorForm, subject: e.target.value })}
-                  placeholder="Quick question about {{company}}"
-                  className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Subject Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={editorForm.subject}
+                      onChange={(e) => setEditorForm({ ...editorForm, subject: e.target.value })}
+                      placeholder="Quick question about {{company}}"
+                      className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Email Body Copy</label>
-                  <span className="text-[9px] font-mono text-zinc-500 font-bold">Available: {"{{first_name}}"}, {"{{company}}"}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Email Body Copy (Supports HTML)</label>
+                      <span className="text-[9px] font-mono text-zinc-500 font-bold">Available: {"{{first_name}}"}, {"{{company}}"}</span>
+                    </div>
+                    <textarea
+                      required
+                      rows={8}
+                      value={editorForm.body}
+                      onChange={(e) => setEditorForm({ ...editorForm, body: e.target.value })}
+                      placeholder="Write clear outreach copy or paste custom HTML code..."
+                      className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b] whitespace-pre-wrap leading-relaxed focus:bg-[#18181b]"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Real-time Sandbox Preview (Simulated Variables)</label>
+                  <div className="h-96 w-full rounded-2xl overflow-hidden bg-white border border-[#1f1f23] shadow-inner">
+                    <iframe
+                      title="Live Email Preview"
+                      srcDoc={compilePreviewHtml(editorForm.body, editorForm.subject)}
+                      className="w-full h-full border-none"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 font-medium font-sans">
+                    Variables like <code className="text-zinc-400 font-mono">{"{{first_name}}"}</code> and <code className="text-zinc-400 font-mono">{"{{company}}"}</code> are automatically compiled with mock data ("John" and "Acme Corp") inside the sandbox.
+                  </p>
                 </div>
-                <textarea
-                  required
-                  rows={8}
-                  value={editorForm.body}
-                  onChange={(e) => setEditorForm({ ...editorForm, body: e.target.value })}
-                  placeholder="Write clear outreach copy..."
-                  className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b] whitespace-pre-wrap leading-relaxed focus:bg-[#18181b]"
-                />
-              </div>
+              )}
 
               <div className="flex justify-between items-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Prepopulate this exact template editor with Gemini AI Copilot context!
-                    setAiStep(editingTemplate.sequenceStep);
-                    setShowAiAssistant(true);
-                  }}
-                  className="flex items-center gap-1 px-3.5 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 text-xs font-bold rounded-xl transition-all border border-indigo-500/10 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Draft this with AI</span>
-                </button>
+                {editTab === "write" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Prepopulate this exact template editor with Gemini AI Copilot context!
+                      setAiStep(editingTemplate.sequenceStep);
+                      setShowAiAssistant(true);
+                    }}
+                    className="flex items-center gap-1 px-3.5 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 text-xs font-bold rounded-xl transition-all border border-indigo-500/10 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Draft this with AI</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
 
                 <div className="flex gap-2">
                   <button
@@ -464,7 +562,7 @@ export default function TemplatesView({
       {/* DIALOG C: CREATE TEMPLATE MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 animate-fade-in animate-duration-150">
-          <div className="bg-[#121214] rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative border border-[#1f1f23] flex flex-col justify-between">
+          <div className="bg-[#121214] rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl relative border border-[#1f1f23] flex flex-col justify-between">
             <button
               onClick={() => {
                 setShowCreateModal(false);
@@ -488,59 +586,103 @@ export default function TemplatesView({
               </div>
             </div>
 
+            {/* Tab selector */}
+            <div className="flex border-b border-[#1f1f23] mb-2">
+              <button
+                type="button"
+                onClick={() => setCreateTab("write")}
+                className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+                  createTab === "write"
+                    ? "border-indigo-600 text-white"
+                    : "border-transparent text-zinc-400 hover:text-white"
+                }`}
+              >
+                Template Editor
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateTab("preview")}
+                className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
+                  createTab === "preview"
+                    ? "border-indigo-600 text-white"
+                    : "border-transparent text-zinc-400 hover:text-white"
+                }`}
+              >
+                HTML / Output Preview
+              </button>
+            </div>
+
             <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Template Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={createForm.name}
-                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                    placeholder="Introductory Subject Outreach"
-                    className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Sequence Step</label>
-                  <select
-                    value={createForm.sequenceStep}
-                    onChange={(e) => setCreateForm({ ...createForm, sequenceStep: parseInt(e.target.value) as 1 | 2 | 3 })}
-                    className="w-full text-xs font-semibold border border-[#1f1f23] p-2.5 rounded-xl bg-[#18181b] text-zinc-350 outline-none cursor-pointer"
-                  >
-                    <option value={1}>Step 1 (Introduction)</option>
-                    <option value={2}>Step 2 (Nurture Thread)</option>
-                    <option value={3}>Step 3 (Breakup Touchpoint)</option>
-                  </select>
-                </div>
-              </div>
+              {createTab === "write" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Template Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={createForm.name}
+                        onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                        placeholder="Introductory Subject Outreach"
+                        className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Sequence Step</label>
+                      <select
+                        value={createForm.sequenceStep}
+                        onChange={(e) => setCreateForm({ ...createForm, sequenceStep: parseInt(e.target.value) as 1 | 2 | 3 })}
+                        className="w-full text-xs font-semibold border border-[#1f1f23] p-2.5 rounded-xl bg-[#18181b] text-zinc-350 outline-none cursor-pointer"
+                      >
+                        <option value={1}>Step 1 (Introduction)</option>
+                        <option value={2}>Step 2 (Nurture Thread)</option>
+                        <option value={3}>Step 3 (Breakup Touchpoint)</option>
+                      </select>
+                    </div>
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Subject Title</label>
-                <input
-                  type="text"
-                  required
-                  value={createForm.subject}
-                  onChange={(e) => setCreateForm({ ...createForm, subject: e.target.value })}
-                  placeholder="Quick question about {{company}}"
-                  className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Subject Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={createForm.subject}
+                      onChange={(e) => setCreateForm({ ...createForm, subject: e.target.value })}
+                      placeholder="Quick question about {{company}}"
+                      className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b]"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Email Body Copy</label>
-                  <span className="text-[9px] font-mono text-zinc-500 font-bold">Available: {"{{first_name}}"}, {"{{company}}"}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Email Body Copy (Supports HTML)</label>
+                      <span className="text-[9px] font-mono text-zinc-500 font-bold">Available: {"{{first_name}}"}, {"{{company}}"}</span>
+                    </div>
+                    <textarea
+                      required
+                      rows={8}
+                      value={createForm.body}
+                      onChange={(e) => setCreateForm({ ...createForm, body: e.target.value })}
+                      placeholder="Write clear outreach copy or paste custom HTML code..."
+                      className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b] whitespace-pre-wrap leading-relaxed focus:bg-[#18181b]"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider block">Real-time Sandbox Preview (Simulated Variables)</label>
+                  <div className="h-96 w-full rounded-2xl overflow-hidden bg-white border border-[#1f1f23] shadow-inner">
+                    <iframe
+                      title="Live Email Preview"
+                      srcDoc={compilePreviewHtml(createForm.body, createForm.subject)}
+                      className="w-full h-full border-none"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 font-medium font-sans">
+                    Variables like <code className="text-zinc-400 font-mono">{"{{first_name}}"}</code> and <code className="text-zinc-400 font-mono">{"{{company}}"}</code> are automatically compiled with mock data ("John" and "Acme Corp") inside the sandbox.
+                  </p>
                 </div>
-                <textarea
-                  required
-                  rows={8}
-                  value={createForm.body}
-                  onChange={(e) => setCreateForm({ ...createForm, body: e.target.value })}
-                  placeholder="Write clear outreach copy..."
-                  className="w-full text-xs font-semibold border border-[#1f1f23] px-3.5 py-2.5 rounded-xl outline-none focus:border-indigo-600 text-zinc-200 bg-[#18181b] whitespace-pre-wrap leading-relaxed focus:bg-[#18181b]"
-                />
-              </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
